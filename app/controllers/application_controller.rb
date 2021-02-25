@@ -34,6 +34,16 @@ class ApplicationController < ActionController::Base
                           health_checks].freeze
   private_constant :PUBLIC_CONTROLLERS
 
+  CONTENT_CHANGE_PATHS = [
+    "/tags/onboarding", # Needs to change when suggested_tags is edited.
+    "/shell_top", # Cached at edge, sent to service worker.
+    "/shell_bottom", # Cached at edge, sent to service worker.
+    "/async_info/shell_version", # Checks if current users should be busted.
+    "/onboarding", # Page is cached at edge.
+    "/", # Page is cached at edge.
+  ].freeze
+  private_constant :CONTENT_CHANGE_PATHS
+
   def verify_private_forem
     return if controller_name.in?(PUBLIC_CONTROLLERS)
     return if self.class.module_parent.to_s == "Admin"
@@ -178,13 +188,7 @@ class ApplicationController < ActionController::Base
   end
 
   def bust_content_change_caches
-    buster = EdgeCache::Buster.new
-    buster.bust("/tags/onboarding") # Needs to change when suggested_tags is edited.
-    buster.bust("/shell_top") # Cached at edge, sent to service worker.
-    buster.bust("/shell_bottom") # Cached at edge, sent to service worker.
-    buster.bust("/async_info/shell_version") # Checks if current users should be busted.
-    buster.bust("/onboarding") # Page is cached at edge.
-    buster.bust("/") # Page is cached at edge.
+    EdgeCache::Bust.call(CONTENT_CHANGE_PATHS)
     SiteConfig.admin_action_taken_at = Time.current # Used as cache key
   end
 
